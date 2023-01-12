@@ -1,0 +1,3 @@
+[submodule "overlay-tk"]
+	path = overlay-tk
+	url = https://github.com/Ithanil/overlay-tk.git

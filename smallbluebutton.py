@@ -9,6 +9,8 @@ import tkinter as tk
 from overlay import Window
 import argparse
 import subprocess
+from PIL import Image
+from numpy import array
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -23,12 +25,12 @@ def init_argparse() -> argparse.ArgumentParser:
     return parser
 
 def toggleMute(winTitle, sleepTime) -> None:
-    subprocess.run(["xdotool", "search", str(winTitle), "windowfocus",
+    subprocess.run(["xdotool", "search", "--name", str(winTitle), "windowfocus",
                     "sleep", str(sleepTime), "key", "alt+M"],
                     check=True)
 
 def raiseWindow(winTitle) -> None:
-    subprocess.run(["xdotool", "search", str(winTitle), "windowraise"],
+    subprocess.run(["xdotool", "search", "--name", str(winTitle), "windowraise"],
                     check=True)
 
 
@@ -36,6 +38,20 @@ def sbbCallBack(winTitle, sleepTime, winRaise) -> None:
     toggleMute(winTitle, sleepTime)
     if winRaise:
         raiseWindow(winTitle)
+
+def getPixelRGB(pixName) -> array:
+    pix = Image.open(pixName)
+    pixMatrix = array(pix)
+    return (pixMatrix[0][0])
+
+def checkMuteStatus(winTitle, coords) -> bool:
+    subprocess.run(["import -silent -window $(xdotool search --name "
+                     + str(winTitle) + ") -crop 1x1+"
+                     + str(coords[0]) + "+" + str(coords[1])
+                     + " /tmp/grab.img"],
+                    check=True, shell=True)
+    pixRGB = getPixelRGB("/tmp/grab.img")
+    print(pixRGB)
 
 def main() -> None:
     parser = init_argparse()
@@ -50,6 +66,7 @@ def main() -> None:
     sbb = tk.Button(win.root, image = bbbLogo, borderwidth = 0,
                     command = lambda: sbbCallBack(args.title, args.sleep, args.winRaise))
     sbb.pack()
+    checkMuteStatus(args.title, (1000,1000))
 
     Window.launch()
 

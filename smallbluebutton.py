@@ -5,11 +5,12 @@ This program creates an overlay with a small blue button
 to toggle&check mute status in BigBlueButton conferences
 """
 
-import tkinter as tk
-from overlay import Window
 import argparse
 import subprocess
-from PIL import Image
+import tkinter as tk
+from overlay import Window
+from Xlib import display, X
+from PIL import Image, ImageTk
 from numpy import array
 
 
@@ -39,19 +40,36 @@ def sbbCallBack(winTitle, sleepTime, winRaise) -> None:
     if winRaise:
         raiseWindow(winTitle)
 
-def getPixelRGB(pixName) -> array:
-    pix = Image.open(pixName)
-    pixMatrix = array(pix)
-    return (pixMatrix[0][0])
+def getControlImage(coords) -> ImageTk.BitmapImage:
+    W, H = 100, 100
+    dsp = display.Display()
+    win = dsp.create_resource_object('window', 102760451)
+    raw = win.get_image(coords[0], coords[1], W, H, X.ZPixmap, 0xffffffff)
+    image = Image.frombytes("1", (W, H), raw.data)#, "raw", "BGRX")
+    return ImageTk.BitmapImage(image)
+    
+def updateControlImageLoop(winObj, coords):
+    img = getControlImage(coords)
+    tk.Label(winObj.root, image=img).pack()
+    winObj.after(2000, lambda: updateControlImageLoop(winObj, coords))
 
-def checkMuteStatus(winTitle, coords) -> bool:
-    subprocess.run(["import -silent -window $(xdotool search --name "
-                     + str(winTitle) + ") -crop 1x1+"
-                     + str(coords[0]) + "+" + str(coords[1])
-                     + " /tmp/grab.img"],
-                    check=True, shell=True)
-    pixRGB = getPixelRGB("/tmp/grab.img")
-    print(pixRGB)
+#def getPixelRGB(pixName) -> array:
+#    pix = Image.open(pixName)
+#    pixMatrix = array(pix)
+#    return (pixMatrix[0][0])
+#
+#def checkMuteStatus(winTitle, coords) -> bool:
+#    subprocess.run(["import -silent -window $(xdotool search --name "
+#                     + str(winTitle) + ") -crop 1x1+"
+#                     + str(coords[0]) + "+" + str(coords[1])
+#                     + " /tmp/grab.bmp"],
+#                    check=True, shell=True)
+#    pixRGB = getPixelRGB("/tmp/grab.bmp")
+#    print(pixRGB)
+
+#def checkMuteLoop(winObj, winTitle, coords):
+#    checkMuteStatus(winTitle, coords)
+#    winObj.after(2000, lambda: checkMuteLoop(winObj, winTitle, coords))
 
 def main() -> None:
     parser = init_argparse()
@@ -66,7 +84,9 @@ def main() -> None:
     sbb = tk.Button(win.root, image = bbbLogo, borderwidth = 0,
                     command = lambda: sbbCallBack(args.title, args.sleep, args.winRaise))
     sbb.pack()
-    checkMuteStatus(args.title, (1000,1000))
+
+    #checkMuteLoop(win, args.title, (1000,1000))
+    updateControlImageLoop(win, (100, 100))
 
     Window.launch()
 

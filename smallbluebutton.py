@@ -12,6 +12,7 @@ from overlay import Window
 from Xlib import display, X
 from PIL import Image, ImageTk
 from numpy import array
+from dataclasses import dataclass
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -40,18 +41,18 @@ def sbbCallBack(winTitle, sleepTime, winRaise) -> None:
     if winRaise:
         raiseWindow(winTitle)
 
-def getControlImage(coords) -> ImageTk.BitmapImage:
-    W, H = 100, 100
+def getControlImage(winID, coords) -> ImageTk.BitmapImage:
+    W, H = 200, 200
     dsp = display.Display()
-    win = dsp.create_resource_object('window', 102760451)
+    win = dsp.create_resource_object('window', winID)
     raw = win.get_image(coords[0], coords[1], W, H, X.ZPixmap, 0xffffffff)
-    image = Image.frombytes("1", (W, H), raw.data)#, "raw", "BGRX")
-    return ImageTk.BitmapImage(image)
+    return ImageTk.BitmapImage(Image.frombytes("1", (W, H), raw.data))
+
     
-def updateControlImageLoop(winObj, coords):
-    img = getControlImage(coords)
-    tk.Label(winObj.root, image=img).pack()
-    winObj.after(2000, lambda: updateControlImageLoop(winObj, coords))
+def updateControlImageLoop(gd, coords):
+    img = getControlImage(gd.bbbwid, coords)
+    gd.controls.configure(image=img)
+    gd.window.after(2000, lambda: updateControlImageLoop(gd, coords))
 
 #def getPixelRGB(pixName) -> array:
 #    pix = Image.open(pixName)
@@ -71,6 +72,15 @@ def updateControlImageLoop(winObj, coords):
 #    checkMuteStatus(winTitle, coords)
 #    winObj.after(2000, lambda: checkMuteLoop(winObj, winTitle, coords))
 
+@dataclass
+class GlobalData:
+# "Global" Data to hold all TK objects
+# and the window ID of the BBB conference
+    window: Window # Window from overlay submodule
+    button: tk.Button # the small blue button
+    controls: tk.Label # peek view of BBB controls
+    bbbwid: int = 0 # window ID of BBB conference window
+
 def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
@@ -85,8 +95,15 @@ def main() -> None:
                     command = lambda: sbbCallBack(args.title, args.sleep, args.winRaise))
     sbb.pack()
 
-    #checkMuteLoop(win, args.title, (1000,1000))
-    updateControlImageLoop(win, (100, 100))
+    # Create label for image of controls
+    ctrl = tk.Label(win.root)
+    ctrl.pack()
+
+    # populate global data tuple
+    gd = GlobalData(window = win, button = sbb, controls = ctrl)
+
+    gd.bbbwid = 83886120
+    updateControlImageLoop(gd, (100, 100))
 
     Window.launch()
 

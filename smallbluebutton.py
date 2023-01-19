@@ -42,35 +42,20 @@ def sbbCallBack(winTitle, sleepTime, winRaise) -> None:
         raiseWindow(winTitle)
 
 def getControlImage(winID, coords) -> ImageTk.BitmapImage:
-    W, H = 200, 200
+    W, H = 140, 40
     dsp = display.Display()
     win = dsp.create_resource_object('window', winID)
     raw = win.get_image(coords[0], coords[1], W, H, X.ZPixmap, 0xffffffff)
-    return ImageTk.BitmapImage(Image.frombytes("1", (W, H), raw.data))
-
+    return ImageTk.PhotoImage(Image.frombytes("L", (W, H), raw.data))
     
+def updateControlImage(gd, coords):
+    gd.bbbimg = getControlImage(gd.bbbwid, coords)
+    gd.controls.configure(image=gd.bbbimg)
+
 def updateControlImageLoop(gd, coords):
-    img = getControlImage(gd.bbbwid, coords)
-    gd.controls.configure(image=img)
+    updateControlImage(gd, coords)
     gd.window.after(2000, lambda: updateControlImageLoop(gd, coords))
 
-#def getPixelRGB(pixName) -> array:
-#    pix = Image.open(pixName)
-#    pixMatrix = array(pix)
-#    return (pixMatrix[0][0])
-#
-#def checkMuteStatus(winTitle, coords) -> bool:
-#    subprocess.run(["import -silent -window $(xdotool search --name "
-#                     + str(winTitle) + ") -crop 1x1+"
-#                     + str(coords[0]) + "+" + str(coords[1])
-#                     + " /tmp/grab.bmp"],
-#                    check=True, shell=True)
-#    pixRGB = getPixelRGB("/tmp/grab.bmp")
-#    print(pixRGB)
-
-#def checkMuteLoop(winObj, winTitle, coords):
-#    checkMuteStatus(winTitle, coords)
-#    winObj.after(2000, lambda: checkMuteLoop(winObj, winTitle, coords))
 
 @dataclass
 class GlobalData:
@@ -79,31 +64,32 @@ class GlobalData:
     window: Window # Window from overlay submodule
     button: tk.Button # the small blue button
     controls: tk.Label # peek view of BBB controls
+    bbbimg: ImageTk.PhotoImage
     bbbwid: int = 0 # window ID of BBB conference window
 
 def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
 
-    win = Window(size = (140, 140), alpha=args.alpha)
+    win = Window(size = (140, 180), alpha=args.alpha)
 
-    # Load BBB Logo
+    # Load BBB Logo and create small blue button
     bbbLogo = tk.PhotoImage(file = 'logo.png')
-
-    # Create button and image
     sbb = tk.Button(win.root, image = bbbLogo, borderwidth = 0,
                     command = lambda: sbbCallBack(args.title, args.sleep, args.winRaise))
     sbb.pack()
 
     # Create label for image of controls
+    img = getControlImage(83886120, (200, 200))
     ctrl = tk.Label(win.root)
     ctrl.pack()
 
-    # populate global data tuple
-    gd = GlobalData(window = win, button = sbb, controls = ctrl)
+    # populate global data instance
+    gd = GlobalData(window = win, button = sbb, controls = ctrl, bbbimg = img)
+    #updateControlImage(gd, (200, 200))
 
     gd.bbbwid = 83886120
-    updateControlImageLoop(gd, (100, 100))
+    updateControlImageLoop(gd, (200, 200))
 
     Window.launch()
 
